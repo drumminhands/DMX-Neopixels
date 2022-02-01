@@ -30,7 +30,7 @@
 #include <Conceptinetics.h>
 
 #define NEOPIXEL_PIN 6
-#define STRING_LENGTH 16
+#define STRING_LENGTH 90
 
 //For now we're just controlling Red, Green, Blue, and Intensity so only need
 //4x DMX channels. First channel is Red, second is Green, third is blue, and
@@ -38,7 +38,7 @@
 #define DMX_SLAVE_CHANNELS 4
 
 // Set here the DMX address of the "fixture". Can be anything 1-512
-#define DMX_ADDRESS 391
+#define DMX_ADDRESS 1
 
 //This is how we tell the Neopixel library information about the strip. For more
 //information look at the Adafruit strandtest example.
@@ -54,7 +54,9 @@ DMX_Slave dmx_slave ( DMX_SLAVE_CHANNELS );
 byte red;
 byte blue;
 byte green;
-byte intensity;
+byte maxIntensity = 64;
+
+uint32_t prevColor; //remember previous color to check if there is a change
 
 void setup() {
   // Enable DMX slave interface and start recording DMX data
@@ -66,9 +68,11 @@ void setup() {
 
   // Initialize the NeoPixels.
   strip.begin();
+  strip.setBrightness(maxIntensity);
   // Set the second pixel to magenta so we know we're talking to the correct
   strip.setPixelColor(1, 255, 0, 255);
   strip.show(); // Initialize all pixels to 'off'
+  prevColor = strip.Color(0,0,0); // init to off
   delay (1000);
 }
 
@@ -87,25 +91,30 @@ void loop() {
   // that makes the next part easier.
   uint32_t color = strip.Color(red, green, blue);
 
-  // Since each pixel is individually adressable, we have to tell each what they
-  // need to be. This for loop essentially says "for every pixel from #0 all the
-  // way to strip length, set the color to the value we calculated earlier".
-  // NeoPixels don't live update their color when you call setPixelColor, so this
-  // allows us to set the color of each pixel without seeing a stairstep effect
-  // as they each update one by one (even if it would be stupid fast).
-  for( int i = 0; i<STRING_LENGTH; i++){
-    strip.setPixelColor(i, color);
+  if (prevColor != color){ // only change neopixels if DMX values change
+
+    // Since each pixel is individually adressable, we have to tell each what they
+    // need to be. This for loop essentially says "for every pixel from #0 all the
+    // way to strip length, set the color to the value we calculated earlier".
+    // NeoPixels don't live update their color when you call setPixelColor, so this
+    // allows us to set the color of each pixel without seeing a stairstep effect
+    // as they each update one by one (even if it would be stupid fast).
+    for( int i = 0; i<STRING_LENGTH; i++){
+      strip.setPixelColor(i, color);
+    }
+  
+  
+    // this configures intensity of the ENTIRE strip. It is generally not recommended
+    // to call this anywhere but void setup() but we're trying to get the most
+    // control possible. If the strip appears to flicker, comment this line out
+    // and it can be called once during setup() if max intensity is too much.
+    // strip.setBrightness(maxIntensity);
+  
+    // strip.show takes all of the previous commands we've sent to the library
+    // and actually updates the color on the strip.
+    strip.show();
+
+    prevColor = color; // store for next time
   }
-
-
-  // this configures intensity of the ENTIRE strip. It is generally not recommended
-  // to call this anywhere but void setup() but we're trying to get the most
-  // control possible. If the strip appears to flicker, comment this line out
-  // and it can be called once during setup() if max intensity is too much.
-  // strip.setBrightness(intensity);
-
-  // strip.show takes all of the previous commands we've sent to the library
-  // and actually updates the color on the strip.
-  strip.show();
 
 }
